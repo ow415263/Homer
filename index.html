@@ -9,18 +9,48 @@
 <body>
   <header class="hero">
     <div class="hero__content">
-      <h1>Homer Smart Postcard</h1>
-      <p>Bridge the physical and digital with a tap. Configure the postcard as a sender or preview the recipient experience.</p>
-      <div class="view-toggle" role="tablist" aria-label="Experience selector">
-        <button id="senderTab" class="view-toggle__button is-active" role="tab" aria-selected="true" aria-controls="senderView">Sender</button>
-        <button id="receiverTab" class="view-toggle__button" role="tab" aria-selected="false" aria-controls="receiverView">Receiver</button>
+      <div class="hero__nav">
+        <div class="hero__branding">
+          <img src="assets/homer-logo.png" alt="Homer logo" class="hero__logo" />
+          <span class="hero__mark">Homer<span class="hero__mark-em">Card</span></span>
+        </div>
+        <nav class="hero__actions" aria-label="Primary navigation">
+          <a href="#" class="hero__link">Dashboard</a>
+          <div class="view-toggle" role="tablist" aria-label="Experience selector">
+            <button id="senderTab" class="view-toggle__button is-active" role="tab" aria-selected="true" aria-controls="senderView">Sender</button>
+            <button id="receiverTab" class="view-toggle__button" role="tab" aria-selected="false" aria-controls="receiverView">Receiver</button>
+          </div>
+        </nav>
       </div>
     </div>
   </header>
   <main>
+    <section id="digitalPostcard" class="digital-postcard" aria-live="polite">
+      <div class="card__intro card__intro--compact">
+        <h2 class="card__title">Digital postcard</h2>
+        <h4 class="card__subtitle">See what your recipient experiences when they tap the NFC tag.</h4>
+      </div>
+      <div id="digitalPostcardContent" class="digital-postcard__frame">
+        <img src="assets/Toronto.jpeg" alt="Toronto skyline at night reflected on the water" loading="lazy" />
+        <button type="button" class="button button--ghost digital-postcard__cta">
+          <span class="digital-postcard__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+              <path d="M5 7.5L12 4l7 3.5v9L12 20l-7-3.5v-9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+              <path d="M12 20v-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M5 7.5l7 3.5 7-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="digital-postcard__label">View in AR</span>
+        </button>
+      </div>
+    </section>
+
     <section id="senderView" class="panel" role="tabpanel" aria-labelledby="senderTab">
       <div class="card">
-        <h2>Set up the Postcard</h2>
+        <div class="card__intro">
+          <h1 class="card__title">Set up the Postcard</h1>
+          <h4 class="card__subtitle">Bridge the physical and digital with a tap. Configure the postcard as a sender or preview the recipient experience.</h4>
+        </div>
         <form id="senderForm" novalidate>
           <div class="field-group">
             <label for="senderTitle">Collection title</label>
@@ -61,9 +91,11 @@
             <ul id="mediaList" class="media-list" aria-live="polite"></ul>
           </fieldset>
         </form>
+        <div id="senderFeedback" class="confirmation" role="status" aria-live="polite"></div>
       </div>
-      <button type="submit" form="senderForm" class="button button--wide" id="embedButton">Embed to Postcard</button>
-      <div id="senderFeedback" class="confirmation" role="status" aria-live="polite"></div>
+      <div class="embed-action">
+        <button type="submit" form="senderForm" class="button button--wide" id="embedButton">Embed to Postcard</button>
+      </div>
     </section>
     <section id="receiverView" class="panel is-hidden" role="tabpanel" aria-labelledby="receiverTab">
       <div class="card">
@@ -129,9 +161,32 @@
       <input id="mediaVideoInput" type="file" accept="video/*" class="modal__file-input" />
     </div>
   </div>
+  <div id="loadingOverlay" class="loading-overlay is-hidden" aria-hidden="true">
+    <div id="loadingOverlayContent" class="loading-overlay__content" role="status" aria-live="polite">
+      <div id="loadingSpinner" class="loading-spinner" aria-hidden="true"></div>
+      <p id="loadingOverlayText" class="loading-overlay__text">Embedding your postcard...</p>
+    </div>
+  </div>
+  <div id="instructionModal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="instructionModalTitle">
+    <div id="instructionModalBackdrop" class="modal__backdrop" tabindex="-1"></div>
+    <div class="modal__content" role="document">
+      <button type="button" id="instructionModalClose" class="modal__close" aria-label="Close instructions">&times;</button>
+        <h2 id="instructionModalTitle" class="modal__heading">Postcard is Embedded with your Memory!</h2>
+        <p class="modal__subtitle">Next Steps:</p>
+        <ul class="confirmation__list">
+          <li>Write a handwritten message on the physical card.</li>
+          <li>Add postage to the postcard.</li>
+          <li>Drop the postcard in the mail.</li>
+        </ul>
+      <div class="modal__actions">
+        <button type="button" id="instructionModalDismiss" class="button">Done</button>
+      </div>
+    </div>
+  </div>
   <footer class="footer">
     <small>&copy; <span id="year"></span> Homer. Crafted for tangible memories.</small>
   </footer>
-  <script src="app.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js" defer></script>
+  <script type="module" src="src/main.js" defer></script>
 </body>
 </html>

@@ -1,17 +1,27 @@
-const storageKey = "homer.postcard.payload";
-const MAX_FILE_BYTES = 3 * 1024 * 1024; // ~3 MB keeps base64 within localStorage limits
-const state = {
-  media: [],
-  authLevel: "none",
-  password: "",
-  hint: "",
-  title: "",
-  location: "",
-  note: "",
-  createdAt: "",
-  currentSlide: 0,
-  receiverMedia: [],
-};
+import {
+  MAX_FILE_BYTES,
+  getStoredPostcard,
+  normalizeMediaItems,
+  persistState,
+  preparePostcard,
+  state,
+  storageKey,
+} from "./state/postcardState.js";
+import {
+  animateDigitalPostcard,
+  renderDigitalPostcard,
+} from "./components/digitalPostcard.js";
+import {
+  formatMediaType,
+  renderMediaList,
+} from "./components/mediaList.js";
+import {
+  closeMediaModal,
+  initModalBindings,
+  openInstructionModal,
+  openMediaModal,
+  playInstructionLoadingAnimation,
+} from "./components/modals.js";
 
 const els = {
   senderTab: document.getElementById("senderTab"),
@@ -59,7 +69,6 @@ const els = {
 };
 
 let isCarouselFullscreen = false;
-let modalReturnFocus = null;
 
 function setActiveView(view) {
   const senderActive = view === "sender";
@@ -69,160 +78,6 @@ function setActiveView(view) {
   els.receiverTab.setAttribute("aria-selected", String(!senderActive));
   els.senderView.classList.toggle("is-hidden", !senderActive);
   els.receiverView.classList.toggle("is-hidden", senderActive);
-}
-
-function formatMediaType(type) {
-  if (!type) return "Media";
-  return type.charAt(0).toUpperCase() + type.slice(1);
-}
-
-function describeMedia(item) {
-  if (!item) return "Media item";
-  switch (item.type) {
-    case "image":
-    case "video": {
-      if (item.name) return item.name;
-      if (item.mime) return item.mime;
-      if (item.url) return item.url;
-      return `${formatMediaType(item.type)} attachment`;
-    }
-    case "link": {
-      return item.url ?? "Link";
-    }
-    default: {
-      if (item.url) return item.url;
-      return "Media item";
-    }
-  }
-}
-
-function normalizeMediaItems(media) {
-  if (!Array.isArray(media)) return [];
-  return media.reduce((acc, item) => {
-    if (!item || typeof item !== "object") return acc;
-    const type = item.type ?? (item.url ? "link" : null);
-    if (!type) return acc;
-
-    if (type === "link") {
-      const url = typeof item.url === "string" ? item.url.trim() : "";
-      if (!url) return acc;
-      acc.push({ type: "link", url });
-      return acc;
-    }
-
-    if (type === "image" || type === "video") {
-      const dataUrl = typeof item.dataUrl === "string" && item.dataUrl
-        ? item.dataUrl
-        : (typeof item.url === "string" ? item.url : "");
-      if (!dataUrl) return acc;
-      const normalized = {
-        type,
-        dataUrl,
-      };
-      const name = typeof item.name === "string" ? item.name.trim() : "";
-      if (name) normalized.name = name;
-      const mime = typeof item.mime === "string" ? item.mime : "";
-      if (mime) normalized.mime = mime;
-      acc.push(normalized);
-      return acc;
-    }
-
-    return acc;
-  }, []);
-}
-
-function preparePostcard(raw) {
-  if (!raw || typeof raw !== "object") return null;
-  let note = typeof raw.note === "string" ? raw.note : "";
-  const mediaSource = Array.isArray(raw.media) ? raw.media : [];
-  const filteredMedia = [];
-
-  mediaSource.forEach((item) => {
-    if (item && item.type === "paragraph") {
-      if (!note && typeof item.text === "string" && item.text.trim()) {
-        note = item.text.trim();
-      }
-      return;
-    }
-    filteredMedia.push(item);
-  });
-
-  return {
-    ...raw,
-    note,
-    media: normalizeMediaItems(filteredMedia),
-  };
-}
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const { result } = reader;
-      if (typeof result === "string") {
-        resolve(result);
-      } else {
-        reject(new Error("Unsupported file encoding"));
-      }
-    };
-    reader.onerror = () => reject(reader.error || new Error("Failed to read file"));
-    reader.readAsDataURL(file);
-  });
-}
-
-function renderMediaList() {
-  els.mediaList.innerHTML = "";
-  if (!state.media.length) {
-    const empty = document.createElement("li");
-    empty.textContent = "No media added yet.";
-    empty.className = "helper-text";
-    els.mediaList.appendChild(empty);
-    return;
-  }
-
-  state.media.forEach((item, index) => {
-    const li = document.createElement("li");
-    li.className = "media-list__item";
-
-    const details = document.createElement("div");
-
-    const typeBadge = document.createElement("div");
-    typeBadge.className = "media-type";
-    typeBadge.textContent = formatMediaType(item.type);
-    details.appendChild(typeBadge);
-
-    const descriptor = document.createElement("div");
-    descriptor.className = "media-descriptor";
-    descriptor.textContent = describeMedia(item);
-    details.appendChild(descriptor);
-
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.textContent = "Remove";
-    removeButton.setAttribute("aria-label", `Remove media ${index + 1}`);
-    removeButton.addEventListener("click", () => {
-      state.media.splice(index, 1);
-      renderMediaList();
-      els.senderFeedback.textContent = "Media removed.";
-    });
-
-    li.appendChild(details);
-    li.appendChild(removeButton);
-
-    els.mediaList.appendChild(li);
-  });
-}
-
-function renderReceiverMessage(note) {
-  if (!els.receiverMessage) return;
-  const message = typeof note === "string" ? note.trim() : "";
-  if (message) {
-    els.receiverMessage.textContent = message;
-    els.receiverMessage.classList.remove("is-hidden");
-  } else {
-    els.receiverMessage.textContent = "";
-    els.receiverMessage.classList.add("is-hidden");
-  }
 }
 
 function updateExpandButtonState(active, available) {
@@ -297,36 +152,27 @@ function handleCarouselFullscreenKeydown(event) {
   }
 }
 
-function openMediaModal() {
-  if (!els.mediaModal) return;
-  modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  document.body.classList.add("modal-open");
-  els.mediaModal.classList.remove("is-hidden");
-  hideLinkForm();
-  document.addEventListener("keydown", handleMediaModalKeydown);
-  requestAnimationFrame(() => {
-    const focusTarget = els.mediaOptionImage || els.mediaOptionVideo || els.mediaOptionLink || els.mediaModalClose;
-    focusTarget?.focus();
+function renderSenderMediaList() {
+  renderMediaList({
+    items: state.media,
+    container: els.mediaList,
+    onRemove: (index) => {
+      state.media.splice(index, 1);
+      renderSenderMediaList();
+      els.senderFeedback.textContent = "Media removed.";
+    },
   });
 }
 
-function closeMediaModal(options = {}) {
-  if (!els.mediaModal) return;
-  const { restoreFocus = true } = options;
-  els.mediaModal.classList.add("is-hidden");
-  document.body.classList.remove("modal-open");
-  document.removeEventListener("keydown", handleMediaModalKeydown);
-  hideLinkForm();
-  if (restoreFocus && modalReturnFocus) {
-    modalReturnFocus.focus?.();
-  }
-  modalReturnFocus = null;
-}
-
-function handleMediaModalKeydown(event) {
-  if (event.key === "Escape") {
-    event.preventDefault();
-    closeMediaModal();
+function renderReceiverMessage(note) {
+  if (!els.receiverMessage) return;
+  const message = typeof note === "string" ? note.trim() : "";
+  if (message) {
+    els.receiverMessage.textContent = message;
+    els.receiverMessage.classList.remove("is-hidden");
+  } else {
+    els.receiverMessage.textContent = "";
+    els.receiverMessage.classList.add("is-hidden");
   }
 }
 
@@ -344,6 +190,22 @@ function hideLinkForm() {
   }
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const { result } = reader;
+      if (typeof result === "string") {
+        resolve(result);
+      } else {
+        reject(new Error("Unsupported file encoding"));
+      }
+    };
+    reader.onerror = () => reject(reader.error || new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function handleMediaLinkSubmit(event) {
   event.preventDefault();
   if (!els.mediaLinkInput) return;
@@ -359,7 +221,7 @@ function handleMediaLinkSubmit(event) {
     return;
   }
   state.media.push({ type: "link", url });
-  renderMediaList();
+  renderSenderMediaList();
   els.senderFeedback.textContent = "Link added.";
   closeMediaModal();
 }
@@ -370,8 +232,11 @@ async function handleFileSelection(type, fileList) {
     return;
   }
   const maxMb = (MAX_FILE_BYTES / (1024 * 1024)).toFixed(1).replace(/\.0$/, "");
-  const focusTarget = modalReturnFocus;
+  const focusTarget = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : els.mediaModalTrigger;
   closeMediaModal({ restoreFocus: false });
+  hideLinkForm();
   let added = 0;
   for (const file of files) {
     if (file.size > MAX_FILE_BYTES) {
@@ -394,48 +259,13 @@ async function handleFileSelection(type, fileList) {
     }
   }
   if (added > 0) {
-    renderMediaList();
+    renderSenderMediaList();
     const label = formatMediaType(type);
     const response = added > 1 ? `${label}s added.` : `${label} added.`;
     els.senderFeedback.textContent = response;
   }
   if (focusTarget) {
     focusTarget.focus?.();
-  }
-  modalReturnFocus = null;
-}
-
-function persistState() {
-  state.media = normalizeMediaItems(state.media);
-  const payload = {
-    title: state.title,
-    location: state.location,
-    note: state.note,
-    authLevel: state.authLevel,
-    hint: state.hint,
-    password: state.password,
-    createdAt: state.createdAt,
-    media: state.media,
-  };
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(payload));
-    return true;
-  } catch (error) {
-    console.error("Failed to persist postcard", error);
-    els.senderFeedback.textContent = "Unable to save postcard. Remove large media and try again.";
-    return false;
-  }
-}
-
-function getStoredPostcard() {
-  try {
-    const stored = localStorage.getItem(storageKey);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored);
-    return preparePostcard(parsed);
-  } catch (error) {
-    console.error("Failed to parse stored postcard", error);
-    return null;
   }
 }
 
@@ -475,22 +305,31 @@ function handleSenderSubmit(event) {
     els.senderMessage.value = note;
   }
   const saved = persistState();
-  if (saved) {
-    els.senderFeedback.innerHTML = [
-      "<p>Your postcard is encoded and ready to send.</p>",
-      "<ul class=\"confirmation__list\">",
-      "<li>Add postage to the physical card.</li>",
-      "<li>Stick the NFC tag where it's easy to tap.</li>",
-      "<li>Put the postcard in the mail.</li>",
-      "</ul>",
-    ].join("");
-    renderReceiverExperience();
+  if (!saved) {
+    els.senderFeedback.textContent = "Unable to save postcard. Remove large media and try again.";
+    return;
   }
+
+  els.senderFeedback.innerHTML = [
+    "<p>Your postcard is encoded and ready to send.</p>",
+    "<ul class=\"confirmation__list\">",
+    "<li>Add postage to the physical card.</li>",
+    "<li>Stick the NFC tag where it's easy to tap.</li>",
+    "<li>Put the postcard in the mail.</li>",
+    "</ul>",
+  ].join("");
+  const postcard = preparePostcard(saved) || saved;
+  renderDigitalPostcard(postcard);
+  renderReceiverExperience();
+  playInstructionLoadingAnimation().then(() => {
+    openInstructionModal();
+  });
 }
 
 function renderReceiverExperience() {
   renderReceiverMessage("");
   const postcard = getStoredPostcard();
+  renderDigitalPostcard(postcard);
   if (!postcard) {
     els.receiverStatus.textContent = "No postcard embedded yet. Configure one on the sender tab.";
     els.receiverAuth.classList.add("is-hidden");
@@ -665,6 +504,9 @@ function handlePasswordSubmit(event) {
 }
 
 function bindEvents() {
+  initModalBindings({
+    onMediaClosed: hideLinkForm,
+  });
   if (els.senderTab) {
     els.senderTab.addEventListener("click", () => setActiveView("sender"));
   }
@@ -676,13 +518,10 @@ function bindEvents() {
   }
 
   if (els.mediaModalTrigger) {
-    els.mediaModalTrigger.addEventListener("click", openMediaModal);
-  }
-  if (els.mediaModalClose) {
-    els.mediaModalClose.addEventListener("click", () => closeMediaModal());
-  }
-  if (els.mediaModalBackdrop) {
-    els.mediaModalBackdrop.addEventListener("click", () => closeMediaModal());
+    els.mediaModalTrigger.addEventListener("click", () => {
+      hideLinkForm();
+      openMediaModal();
+    });
   }
   if (els.mediaOptionImage && els.mediaImageInput) {
     els.mediaOptionImage.addEventListener("click", () => {
@@ -783,7 +622,7 @@ function bindEvents() {
         state.hint = updated.hint ?? "";
         state.createdAt = updated.createdAt ?? "";
         state.media = normalizeMediaItems(updated.media);
-        renderMediaList();
+        renderSenderMediaList();
         if (els.senderTitle) {
           els.senderTitle.value = state.title;
         }
@@ -841,9 +680,12 @@ function init() {
     radio.checked = radio.value === state.authLevel;
   });
   els.passwordFields.classList.toggle("is-hidden", state.authLevel !== "password");
-  renderMediaList();
+  renderSenderMediaList();
   renderReceiverExperience();
   bindEvents();
+  requestAnimationFrame(() => {
+    animateDigitalPostcard();
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);
