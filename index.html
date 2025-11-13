@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homer NFC Postcard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__content">
+      <h1>Homer Smart Postcard</h1>
+      <p>Bridge the physical and digital with a tap. Configure the postcard as a sender or preview the recipient experience.</p>
+      <div class="view-toggle" role="tablist" aria-label="Experience selector">
+        <button id="senderTab" class="view-toggle__button is-active" role="tab" aria-selected="true" aria-controls="senderView">Sender</button>
+        <button id="receiverTab" class="view-toggle__button" role="tab" aria-selected="false" aria-controls="receiverView">Receiver</button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section id="senderView" class="panel" role="tabpanel" aria-labelledby="senderTab">
+      <div class="card">
+        <h2>Set up the Postcard</h2>
+        <form id="senderForm" novalidate>
+          <div class="field-group">
+            <label for="senderTitle">Collection title</label>
+            <input id="senderTitle" name="title" type="text" placeholder="Summer Memories" maxlength="80" required />
+          </div>
+          <div class="field-group">
+            <label for="senderLocation">Location sent from</label>
+            <input id="senderLocation" name="location" type="text" placeholder="Lisbon, Portugal" maxlength="120" />
+          </div>
+          <div class="field-group">
+            <label for="senderMessage">Postcard message</label>
+            <textarea id="senderMessage" name="note" rows="4" maxlength="800" placeholder="Share a memory or note..."></textarea>
+            <p class="helper-text">This message appears above the media carousel for the receiver.</p>
+          </div>
+          <fieldset class="field-group">
+            <legend>Authentication</legend>
+            <label class="option">
+              <input type="radio" name="authLevel" value="none" checked />
+              <span>No password</span>
+            </label>
+            <label class="option">
+              <input type="radio" name="authLevel" value="password" />
+              <span>Password protected</span>
+            </label>
+            <div id="passwordFields" class="field-group is-hidden">
+              <label for="senderPassword">Password</label>
+              <input id="senderPassword" name="password" type="text" inputmode="text" minlength="4" maxlength="32" />
+              <label for="senderHint">Hint or clue</label>
+              <input id="senderHint" name="hint" type="text" maxlength="80" placeholder="Where did we first meet?" />
+            </div>
+          </fieldset>
+          <fieldset class="field-group">
+            <legend>Attach media</legend>
+            <div class="media-trigger">
+              <button type="button" id="openMediaModal" class="button button--ghost">Attach media</button>
+              <p class="helper-text">Add photos, videos, or links to share alongside your message.</p>
+            </div>
+            <ul id="mediaList" class="media-list" aria-live="polite"></ul>
+          </fieldset>
+        </form>
+      </div>
+      <button type="submit" form="senderForm" class="button button--wide" id="embedButton">Embed to Postcard</button>
+      <div id="senderFeedback" class="confirmation" role="status" aria-live="polite"></div>
+    </section>
+    <section id="receiverView" class="panel is-hidden" role="tabpanel" aria-labelledby="receiverTab">
+      <div class="card">
+        <h2>Open your Postcard</h2>
+        <div id="receiverStatus" class="feedback" role="status" aria-live="polite"></div>
+        <form id="receiverAuth" class="field-group is-hidden">
+          <p id="hintText" class="hint"></p>
+          <label for="receiverPassword">Enter password</label>
+          <input id="receiverPassword" type="password" minlength="4" maxlength="32" autocomplete="one-time-code" />
+          <button type="submit" class="button">Unlock</button>
+        </form>
+        <article id="receiverContent" class="receiver-content is-hidden" aria-live="polite">
+          <header class="receiver-content__header">
+            <div>
+              <h3 id="receiverTitle"></h3>
+              <p id="receiverMeta" class="meta"></p>
+            </div>
+            <button id="downloadMedia" class="button button--ghost">Download current media</button>
+          </header>
+          <div id="receiverMessage" class="receiver-message is-hidden" aria-live="polite"></div>
+          <div id="carouselContainer" class="carousel" role="region" aria-label="Postcard media">
+            <button id="prevMedia" class="carousel__control" aria-label="Previous media">&#10094;</button>
+            <div id="carouselViewport" class="carousel__viewport">
+              <button id="expandMedia" type="button" class="carousel__expand" aria-label="Expand media" aria-pressed="false">Expand</button>
+              <div id="mediaCarousel" class="carousel__track"></div>
+            </div>
+            <button id="nextMedia" class="carousel__control" aria-label="Next media">&#10095;</button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div id="mediaModal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="mediaModalTitle">
+    <div id="mediaModalBackdrop" class="modal__backdrop" tabindex="-1"></div>
+    <div class="modal__content" role="document">
+      <button type="button" id="mediaModalClose" class="modal__close" aria-label="Close media modal">&times;</button>
+      <h3 id="mediaModalTitle">Add media</h3>
+      <p class="modal__subtitle">Choose what you want to attach to this postcard.</p>
+      <div class="modal__options">
+        <button type="button" id="mediaOptionImage" class="modal__option">
+          <span class="modal__option-title">Attach photos</span>
+          <span class="modal__option-hint">Upload images directly from your device.</span>
+        </button>
+        <button type="button" id="mediaOptionVideo" class="modal__option">
+          <span class="modal__option-title">Attach videos</span>
+          <span class="modal__option-hint">Share short clips (up to 3 MB).</span>
+        </button>
+        <button type="button" id="mediaOptionLink" class="modal__option">
+          <span class="modal__option-title">Add a link</span>
+          <span class="modal__option-hint">Paste a public URL to hosted media.</span>
+        </button>
+      </div>
+      <form id="mediaLinkForm" class="modal__link is-hidden">
+        <label for="mediaLinkInput">Link URL</label>
+        <input id="mediaLinkInput" type="url" placeholder="https://example.com/album" />
+        <div class="modal__actions">
+          <button type="submit" class="button">Add link</button>
+          <button type="button" id="mediaLinkCancel" class="button button--ghost">Cancel</button>
+        </div>
+      </form>
+      <input id="mediaImageInput" type="file" accept="image/*" class="modal__file-input" multiple />
+      <input id="mediaVideoInput" type="file" accept="video/*" class="modal__file-input" />
+    </div>
+  </div>
+  <footer class="footer">
+    <small>&copy; <span id="year"></span> Homer. Crafted for tangible memories.</small>
+  </footer>
+  <script src="app.js" defer></script>
+</body>
+</html>
