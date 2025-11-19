@@ -30,13 +30,12 @@ const els = {
   receiverView: document.getElementById("receiverView"),
   senderTitle: document.getElementById("senderTitle"),
   senderLocation: document.getElementById("senderLocation"),
-  senderMessage: document.getElementById("senderMessage"),
   authRadios: document.querySelectorAll("input[name='authLevel']"),
   passwordFields: document.getElementById("passwordFields"),
   senderPassword: document.getElementById("senderPassword"),
   senderHint: document.getElementById("senderHint"),
   senderForm: document.getElementById("senderForm"),
-  mediaModalTrigger: document.getElementById("openMediaModal"),
+  mediaModalTrigger: document.getElementById("mediaTrigger"),
   mediaModal: document.getElementById("mediaModal"),
   mediaModalBackdrop: document.getElementById("mediaModalBackdrop"),
   mediaModalClose: document.getElementById("mediaModalClose"),
@@ -57,7 +56,6 @@ const els = {
   receiverContent: document.getElementById("receiverContent"),
   receiverTitle: document.getElementById("receiverTitle"),
   receiverMeta: document.getElementById("receiverMeta"),
-  receiverMessage: document.getElementById("receiverMessage"),
   carouselContainer: document.getElementById("carouselContainer"),
   carouselViewport: document.getElementById("carouselViewport"),
   mediaCarousel: document.getElementById("mediaCarousel"),
@@ -164,18 +162,6 @@ function renderSenderMediaList() {
   });
 }
 
-function renderReceiverMessage(note) {
-  if (!els.receiverMessage) return;
-  const message = typeof note === "string" ? note.trim() : "";
-  if (message) {
-    els.receiverMessage.textContent = message;
-    els.receiverMessage.classList.remove("is-hidden");
-  } else {
-    els.receiverMessage.textContent = "";
-    els.receiverMessage.classList.add("is-hidden");
-  }
-}
-
 function showLinkForm() {
   if (!els.mediaLinkForm) return;
   els.mediaLinkForm.classList.remove("is-hidden");
@@ -274,7 +260,6 @@ function handleSenderSubmit(event) {
   const formData = new FormData(event.currentTarget);
   const title = (formData.get("title") || "").trim();
   const location = (formData.get("location") || "").trim();
-  const note = (formData.get("note") || "").trim();
   const authLevel = formData.get("authLevel") || "none";
   const password = (formData.get("password") || "").trim();
   const hint = (formData.get("hint") || "").trim();
@@ -284,8 +269,8 @@ function handleSenderSubmit(event) {
     return;
   }
 
-  if (!state.media.length && !note) {
-    els.senderFeedback.textContent = "Add media or write a message before embedding.";
+  if (!state.media.length) {
+    els.senderFeedback.textContent = "Attach at least one media item before embedding.";
     return;
   }
 
@@ -296,14 +281,10 @@ function handleSenderSubmit(event) {
 
   state.title = title;
   state.location = location;
-  state.note = note;
   state.authLevel = authLevel;
   state.password = authLevel === "password" ? password : "";
   state.hint = authLevel === "password" ? hint : "";
   state.createdAt = new Date().toISOString();
-  if (els.senderMessage) {
-    els.senderMessage.value = note;
-  }
   const saved = persistState();
   if (!saved) {
     els.senderFeedback.textContent = "Unable to save postcard. Remove large media and try again.";
@@ -327,7 +308,6 @@ function handleSenderSubmit(event) {
 }
 
 function renderReceiverExperience() {
-  renderReceiverMessage("");
   const postcard = getStoredPostcard();
   renderDigitalPostcard(postcard);
   if (!postcard) {
@@ -374,7 +354,6 @@ function presentReceiverContent(postcard) {
     : "";
   const metaParts = [date, postcard.location].filter(Boolean);
   els.receiverMeta.textContent = metaParts.join(" · ");
-  renderReceiverMessage(postcard.note);
   state.currentSlide = 0;
   state.receiverMedia = normalizeMediaItems(postcard.media);
   buildCarousel(state.receiverMedia);
@@ -518,9 +497,16 @@ function bindEvents() {
   }
 
   if (els.mediaModalTrigger) {
-    els.mediaModalTrigger.addEventListener("click", () => {
+    const openMedia = () => {
       hideLinkForm();
       openMediaModal();
+    };
+    els.mediaModalTrigger.addEventListener("click", openMedia);
+    els.mediaModalTrigger.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openMedia();
+      }
     });
   }
   if (els.mediaOptionImage && els.mediaImageInput) {
@@ -592,16 +578,6 @@ function bindEvents() {
     });
   });
 
-  if (els.senderMessage) {
-    els.senderMessage.addEventListener("input", (event) => {
-      const target = event.target;
-      if (!target || typeof target.value !== "string") {
-        return;
-      }
-      state.note = target.value;
-    });
-  }
-
   if (els.expandMedia && document.fullscreenEnabled && els.carouselContainer && typeof els.carouselContainer.requestFullscreen === "function") {
     els.expandMedia.addEventListener("click", toggleCarouselFullscreen);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -616,7 +592,6 @@ function bindEvents() {
       if (updated) {
         state.title = updated.title ?? "";
         state.location = updated.location ?? "";
-        state.note = updated.note ?? "";
         state.authLevel = updated.authLevel ?? "none";
         state.password = updated.password ?? "";
         state.hint = updated.hint ?? "";
@@ -628,9 +603,6 @@ function bindEvents() {
         }
         if (els.senderLocation) {
           els.senderLocation.value = state.location;
-        }
-        if (els.senderMessage) {
-          els.senderMessage.value = state.note;
         }
         if (els.senderPassword) {
           els.senderPassword.value = state.password;
@@ -655,7 +627,6 @@ function init() {
     state.media = normalizeMediaItems(stored.media);
     state.title = stored.title ?? "";
     state.location = stored.location ?? "";
-    state.note = stored.note ?? "";
     state.authLevel = stored.authLevel ?? "none";
     state.password = stored.password ?? "";
     state.hint = stored.hint ?? "";
@@ -666,9 +637,6 @@ function init() {
   }
   if (els.senderLocation) {
     els.senderLocation.value = state.location;
-  }
-  if (els.senderMessage) {
-    els.senderMessage.value = state.note;
   }
   if (els.senderPassword) {
     els.senderPassword.value = state.password;

@@ -8,7 +8,6 @@ const state = {
   hint: "",
   title: "",
   location: "",
-  note: "",
   createdAt: "",
   currentSlide: 0,
   receiverMedia: [],
@@ -51,24 +50,9 @@ function normalizeMediaItems(media) {
 
 function preparePostcard(raw) {
   if (!raw || typeof raw !== "object") return null;
-  let note = typeof raw.note === "string" ? raw.note : "";
-  const mediaSource = Array.isArray(raw.media) ? raw.media : [];
-  const filteredMedia = [];
-
-  mediaSource.forEach((item) => {
-    if (item && item.type === "paragraph") {
-      if (!note && typeof item.text === "string" && item.text.trim()) {
-        note = item.text.trim();
-      }
-      return;
-    }
-    filteredMedia.push(item);
-  });
-
   return {
     ...raw,
-    note,
-    media: normalizeMediaItems(filteredMedia),
+    media: normalizeMediaItems(Array.isArray(raw.media) ? raw.media : []),
   };
 }
 
@@ -77,7 +61,6 @@ function persistState() {
   const payload = {
     title: state.title,
     location: state.location,
-    note: state.note,
     authLevel: state.authLevel,
     hint: state.hint,
     password: state.password,
