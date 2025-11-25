@@ -11,7 +11,37 @@ const state = {
   createdAt: "",
   currentSlide: 0,
   receiverMedia: [],
+  extractLocationEnabled: null,
+  locationPreferenceDecided: false,
 };
+
+function normalizeMetadata(raw = {}) {
+  if (!raw || typeof raw !== "object") return undefined;
+  const metadata = {};
+  if (typeof raw.location === "string" && raw.location.trim()) {
+    metadata.location = raw.location.trim();
+  }
+  if (typeof raw.source === "string" && raw.source.trim()) {
+    metadata.source = raw.source.trim();
+  }
+  if (raw.capturedAt) {
+    const captured = new Date(raw.capturedAt);
+    if (!Number.isNaN(captured.getTime())) {
+      metadata.capturedAt = captured.toISOString();
+    }
+  }
+  const latCandidate = raw.lat ?? raw.latitude;
+  const lngCandidate = raw.lng ?? raw.longitude;
+  const lat = typeof latCandidate === "string" ? Number(latCandidate) : latCandidate;
+  const lng = typeof lngCandidate === "string" ? Number(lngCandidate) : lngCandidate;
+  if (Number.isFinite(lat)) {
+    metadata.lat = lat;
+  }
+  if (Number.isFinite(lng)) {
+    metadata.lng = lng;
+  }
+  return Object.keys(metadata).length ? metadata : undefined;
+}
 
 function normalizeMediaItems(media) {
   if (!Array.isArray(media)) return [];
@@ -23,7 +53,17 @@ function normalizeMediaItems(media) {
     if (type === "link") {
       const url = typeof item.url === "string" ? item.url.trim() : "";
       if (!url) return acc;
-      acc.push({ type: "link", url });
+      const normalizedLink = { type: "link", url };
+      if (item.metadata && typeof item.metadata === "object") {
+        const metadata = normalizeMetadata(item.metadata);
+        if (metadata) {
+          normalizedLink.metadata = metadata;
+        }
+      }
+      if (typeof item.location === "string" && item.location.trim()) {
+        normalizedLink.location = item.location.trim();
+      }
+      acc.push(normalizedLink);
       return acc;
     }
 
@@ -40,6 +80,15 @@ function normalizeMediaItems(media) {
       if (name) normalized.name = name;
       const mime = typeof item.mime === "string" ? item.mime : "";
       if (mime) normalized.mime = mime;
+      if (item.metadata && typeof item.metadata === "object") {
+        const metadata = normalizeMetadata(item.metadata);
+        if (metadata) {
+          normalized.metadata = metadata;
+        }
+      }
+      if (typeof item.location === "string" && item.location.trim()) {
+        normalized.location = item.location.trim();
+      }
       acc.push(normalized);
       return acc;
     }
@@ -58,6 +107,8 @@ function preparePostcard(raw) {
 
 function persistState() {
   state.media = normalizeMediaItems(state.media);
+  const preferenceDecided = Boolean(state.locationPreferenceDecided);
+  const locationPreference = preferenceDecided ? Boolean(state.extractLocationEnabled) : null;
   const payload = {
     title: state.title,
     location: state.location,
@@ -66,6 +117,8 @@ function persistState() {
     password: state.password,
     createdAt: state.createdAt,
     media: state.media,
+    extractLocationEnabled: locationPreference,
+    locationPreferenceDecided: preferenceDecided,
   };
   try {
     localStorage.setItem(storageKey, JSON.stringify(payload));

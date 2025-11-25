@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Homer NFC Postcard</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.min.js" defer></script>
 </head>
 <body>
   <header class="app-header" aria-label="Primary navigation">
@@ -18,11 +19,11 @@
           <button id="senderTab" class="view-toggle__button is-active" role="tab" aria-selected="true" aria-controls="senderView">Sender</button>
           <button id="receiverTab" class="view-toggle__button" role="tab" aria-selected="false" aria-controls="receiverView">Receiver</button>
         </div>
-        <button type="button" class="app-header__dashboard" aria-label="Open dashboard">
+        <a href="dashboard.html" class="app-header__dashboard" aria-label="Open dashboard">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
             <path d="M4.5 5.5h6v6h-6zM13.5 5.5h6v4h-6zM13.5 12.5h6v6h-6zM4.5 13.5h6v5h-6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
           </svg>
-        </button>
+        </a>
       </div>
     </div>
   </header>
@@ -85,8 +86,7 @@
     </section>
     <section id="receiverView" class="panel is-hidden" role="tabpanel" aria-labelledby="receiverTab">
       <div class="card">
-        <h2>Open your Postcard</h2>
-        <div id="receiverStatus" class="feedback" role="status" aria-live="polite"></div>
+        <div id="receiverStatus" class="feedback is-hidden" role="status" aria-live="polite"></div>
         <form id="receiverAuth" class="field-group is-hidden">
           <p id="hintText" class="hint"></p>
           <label for="receiverPassword">Enter password</label>
@@ -102,12 +102,21 @@
             <button id="downloadMedia" class="button button--ghost">Download current media</button>
           </header>
           <div id="carouselContainer" class="carousel" role="region" aria-label="Postcard media">
-            <button id="prevMedia" class="carousel__control" aria-label="Previous media">&#10094;</button>
             <div id="carouselViewport" class="carousel__viewport">
-              <button id="expandMedia" type="button" class="carousel__expand" aria-label="Expand media" aria-pressed="false">Expand</button>
+              <button id="expandMedia" type="button" class="carousel__expand" aria-label="Expand media" aria-pressed="false">
+                <span aria-hidden="true">⤢</span>
+              </button>
               <div id="mediaCarousel" class="carousel__track"></div>
+              <button id="prevMedia" class="carousel__control carousel__control--prev" aria-label="Previous media">&#10094;</button>
+              <button id="nextMedia" class="carousel__control carousel__control--next" aria-label="Next media">&#10095;</button>
+              <div id="carouselIndicators" class="carousel__indicators" aria-hidden="true"></div>
+              <button id="mapPreviewToggle" type="button" class="carousel__map-toggle is-hidden" aria-pressed="false">
+                <span class="sr-only">Show map view</span>
+                <div class="carousel__map-thumb">
+                  <div id="mediaMapOverlay" class="carousel__map-canvas" role="img" aria-label="Media map preview"></div>
+                </div>
+              </button>
             </div>
-            <button id="nextMedia" class="carousel__control" aria-label="Next media">&#10095;</button>
           </div>
         </article>
       </div>
@@ -120,7 +129,7 @@
       <button type="button" id="mediaModalClose" class="modal__close" aria-label="Close media modal">&times;</button>
       <h3 id="mediaModalTitle">Add media</h3>
       <p class="modal__subtitle">Choose what you want to attach to this postcard.</p>
-      <div class="modal__options">
+      <div class="modal__options" id="mediaOptions">
         <button type="button" id="mediaOptionImage" class="modal__option">
           <span class="modal__option-title">Attach photos</span>
           <span class="modal__option-hint">Upload images directly from your device.</span>
@@ -134,6 +143,18 @@
           <span class="modal__option-hint">Paste a public URL to hosted media.</span>
         </button>
       </div>
+      <p class="modal__prompt" id="mediaLocationPrompt">Add media location?</p>
+      <div class="modal__choice-row" role="radiogroup" aria-labelledby="mediaLocationPrompt">
+        <label class="choice-pill" for="mediaLocationOptIn">
+          <input type="radio" id="mediaLocationOptIn" name="mediaLocationChoice" value="share" />
+          <span>Yes, add labels</span>
+        </label>
+        <label class="choice-pill" for="mediaLocationOptOut">
+          <input type="radio" id="mediaLocationOptOut" name="mediaLocationChoice" value="skip" />
+          <span>No, keep private</span>
+        </label>
+      </div>
+      <p id="mediaLocationRequirement" class="modal__requirement" role="status" aria-live="polite">Choose an option to unlock the attachment tools.</p>
       <form id="mediaLinkForm" class="modal__link is-hidden">
         <label for="mediaLinkInput">Link URL</label>
         <input id="mediaLinkInput" type="url" placeholder="https://example.com/album" />
@@ -171,6 +192,12 @@
   <footer class="footer">
     <small>&copy; <span id="year"></span> Homer. Crafted for tangible memories.</small>
   </footer>
+  <script>
+    window.HOMER_CONFIG = window.HOMER_CONFIG || {
+      googleMapsApiKey: "AIzaSyCutvv7f2R1FV-ScEC_6gJfvMBCFAAYJdw",
+      googleMapsMapId: "",
+    };
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js" defer></script>
   <script type="module" src="src/main.js" defer></script>
 </body>

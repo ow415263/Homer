@@ -264,6 +264,7 @@ function initModalBindings({
       instructionBackdrop.addEventListener("click", handleInstructionClose);
     }
   }
+
 }
 
 export {

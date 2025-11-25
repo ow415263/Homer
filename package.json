@@ -1,0 +1,16 @@
+{
+  "name": "homer",
+  "version": "1.0.0",
+  "description": "Prototype of the Homer smart postcard experience. Built with vanilla HTML, CSS, and JavaScript so you can iterate quickly without committing to a framework.",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "playwright": "^1.57.0"
+  }
+}

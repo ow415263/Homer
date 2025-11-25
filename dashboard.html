@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homer Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header" aria-label="Dashboard navigation">
+    <div class="app-header__inner">
+      <div class="app-header__brand">
+        <span class="app-header__lettermark" aria-hidden="true">Homer</span>
+        <span class="sr-only">Homer</span>
+      </div>
+      <div class="app-header__actions">
+        <a href="index.html" class="button button--ghost" aria-label="Back to postcard builder">Builder</a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section id="digitalPostcard" class="digital-postcard" aria-hidden="true">
+      <div class="digital-postcard__frame" role="presentation">
+        <img src="assets/Toronto.jpeg" alt="Toronto skyline at night reflected on the water" loading="lazy" />
+      </div>
+    </section>
+
+    <section class="dashboard-page">
+      <div class="dashboard-page__intro">
+            <div class="dashboard__usage-header">
+              <div class="dashboard__avatar" id="dashboardAvatar" aria-hidden="true">HC</div>
+              <div>
+                <p class="dashboard__name" id="dashboardName">Homer Creator</p>
+                <p class="dashboard__handle" id="dashboardHandle">@homer.user</p>
+              </div>
+              <button type="button" class="button button--ghost dashboard__manage" aria-label="Manage profile">Manage</button>
+            </div>
+            <div class="dashboard__usage-metrics">
+              <div>
+                <p class="dashboard__stat-label">Cards embedded</p>
+                <p class="dashboard__usage-value" id="cardsSentCount">0</p>
+              </div>
+              <div>
+                <p class="dashboard__stat-label">Memories unlocked</p>
+                <p class="dashboard__usage-value" id="cardsReceivedCount">0</p>
+              </div>
+            </div>
+            <div class="dashboard__usage-chart" aria-label="Map of postcard origins and rewards">
+              <div class="dashboard__map-header">
+                <div>
+                  <p class="dashboard__stat-label">Where your stories travel</p>
+                  <p class="dashboard__map-summary" id="mapSummary">Tracking global moments</p>
+                </div>
+                <span class="dashboard__map-count" id="mapCount">0 pins</span>
+              </div>
+              <div class="dashboard__map" role="img" aria-live="polite" aria-label="Map showing postcard locations">
+                <div class="dashboard__map-glow" aria-hidden="true"></div>
+                <div id="mapPins" class="dashboard__map-pins" role="list" aria-label="Postcard pins"></div>
+              </div>
+              <div class="dashboard__stamp-tracker" aria-live="polite">
+                <div class="dashboard__stamp-copy">
+                  <p class="dashboard__stat-label">Stamp rewards</p>
+                  <p class="dashboard__stamp-status" id="stampStatus">0 / 5 stamps unlocked</p>
+                  <p class="dashboard__stamp-credits" id="creditStatus">Earn travel credits by sending cards</p>
+                </div>
+                <div id="stampGrid" class="dashboard__stamp-grid" role="list" aria-label="Reward stamp progress"></div>
+              </div>
+            </div>
+      </div>
+
+      <section class="dashboard" aria-label="Homer dashboard overview">
+        <div class="dashboard__grid">
+          <article id="howToUse" class="dashboard__panel dashboard__run-card" aria-label="How to use Homer">
+            <div class="dashboard__run-meta">
+              <p class="dashboard__meta-label">How to use</p>
+              <h3 class="dashboard__run-title">Bring Homer postcards to life</h3>
+              <p class="dashboard__run-copy">Go from blank NFC cardstock to an embedded story in a few steps.</p>
+            </div>
+            <ol class="dashboard__run-list">
+              <li>Order official Homer NFC postcard kits from <a href="https://shop.homer.cards" target="_blank" rel="noreferrer">shop.homer.cards</a>.</li>
+              <li>Launch the Homer builder on desktop (this prototype) and sign in with your account.</li>
+              <li>Attach photos, videos, or links, pick authentication, and review the preview.</li>
+              <li>Tap “Embed to Postcard” and hold the blank card near the NFC tag to encode your message.</li>
+              <li>Drop the physical postcard in the mail so recipients can tap and unlock it.</li>
+            </ol>
+            <p class="dashboard__run-footnote">Need help? Ping support@homer.cards and we’ll walk you through tagging your first card.</p>
+          </article>
+
+          <article class="dashboard__panel dashboard__soon-card">
+            <p class="dashboard__soon-kicker">Coming soon</p>
+            <h3 class="dashboard__soon-title">Homer e-cards</h3>
+            <p class="dashboard__soon-copy">Design and send digital Homer experiences directly from your dashboard.</p>
+            <ul class="dashboard__soon-list">
+              <li>Customizable templates</li>
+              <li>Instant delivery receipts</li>
+              <li>Shared media vault</li>
+            </ul>
+            <button class="button" type="button" disabled aria-disabled="true">Notify me</button>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+  <footer class="footer">
+    <small>&copy; <span id="year"></span> Homer. Crafted for tangible memories.</small>
+  </footer>
+  <script type="module" src="src/dashboard.js"></script>
+</body>
+</html>
