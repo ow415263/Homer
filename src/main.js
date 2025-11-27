@@ -1,4 +1,5 @@
 import {
+  clearStoredPostcard,
   MAX_FILE_BYTES,
   getStoredPostcard,
   normalizeMediaItems,
@@ -8,7 +9,6 @@ import {
   storageKey,
 } from "./state/postcardState.js";
 import {
-  animateDigitalPostcard,
   renderDigitalPostcard,
 } from "./components/digitalPostcard.js";
 import {
@@ -71,6 +71,7 @@ const els = {
   expandMedia: document.getElementById("expandMedia"),
   mapPreviewToggle: document.getElementById("mapPreviewToggle"),
   mediaMapOverlay: document.getElementById("mediaMapOverlay"),
+  mapToggleText: document.querySelector(".carousel__map-toggle-text"),
   year: document.getElementById("year"),
 };
 
@@ -292,8 +293,14 @@ function updateExpandButtonState(active, available) {
     els.expandMedia.classList.remove("is-hidden");
   }
   els.expandMedia.setAttribute("aria-pressed", String(Boolean(active)));
-  els.expandMedia.textContent = active ? "Exit full screen" : "Expand";
-  els.expandMedia.setAttribute("aria-label", active ? "Exit full screen" : "Expand media");
+  const nextState = active ? "exit" : "enter";
+  els.expandMedia.dataset.state = nextState;
+  const label = active ? "Exit full screen" : "Expand media";
+  els.expandMedia.setAttribute("aria-label", label);
+  const srLabel = els.expandMedia.querySelector(".carousel__expand-label");
+  if (srLabel) {
+    srLabel.textContent = label;
+  }
 }
 
 function exitCarouselFullscreen() {
@@ -811,6 +818,14 @@ function setMapExpanded(expanded) {
   }
   if (els.mapPreviewToggle) {
     els.mapPreviewToggle.setAttribute("aria-pressed", String(nextState));
+    const label = nextState ? "Return to gallery" : "See on map";
+    els.mapPreviewToggle.setAttribute("aria-label", label);
+    if (els.mapToggleText) {
+      els.mapToggleText.textContent = label;
+    }
+  }
+  if (els.mediaMapOverlay) {
+    els.mediaMapOverlay.setAttribute("aria-hidden", String(!nextState));
   }
 }
 
@@ -892,11 +907,14 @@ function bindEvents() {
 
   if (els.mapPreviewToggle) {
     els.mapPreviewToggle.addEventListener("click", () => {
-      if (!hasGeotaggedMedia || isMapExpanded) {
+      if (!hasGeotaggedMedia) {
         return;
       }
-      setMapExpanded(true);
-      void updateReceiverMap();
+      const nextState = !isMapExpanded;
+      setMapExpanded(nextState);
+      if (nextState) {
+        void updateReceiverMap();
+      }
     });
   }
 
@@ -967,42 +985,16 @@ function bindEvents() {
 
   window.addEventListener("storage", (event) => {
     if (event.key === storageKey) {
-      const updated = getStoredPostcard();
-      if (updated) {
-        state.title = updated.title ?? "";
-        state.location = updated.location ?? "";
-        state.authLevel = updated.authLevel ?? "none";
-        state.password = updated.password ?? "";
-        state.hint = updated.hint ?? "";
-        state.createdAt = updated.createdAt ?? "";
-        if (typeof updated.extractLocationEnabled === "boolean") {
-          state.extractLocationEnabled = updated.extractLocationEnabled;
-          state.locationPreferenceDecided = Boolean(updated.locationPreferenceDecided ?? true);
-        } else {
-          state.extractLocationEnabled = null;
-          state.locationPreferenceDecided = Boolean(updated.locationPreferenceDecided);
-        }
-        state.media = normalizeMediaItems(updated.media);
-        renderSenderMediaList();
-        if (els.senderTitle) {
-          els.senderTitle.value = state.title;
-        }
-        if (els.senderLocation) {
-          els.senderLocation.value = state.location;
-        }
-        if (els.senderPassword) {
-          els.senderPassword.value = state.password;
-        }
-        if (els.senderHint) {
-          els.senderHint.value = state.hint;
-        }
-        els.authRadios.forEach((radio) => {
-          radio.checked = radio.value === state.authLevel;
-        });
-        els.passwordFields.classList.toggle("is-hidden", state.authLevel !== "password");
-        syncLocationExtractionUI();
-      }
       renderReceiverExperience();
+      return;
+    }
+    if (event.key === LOCATION_PREF_KEY) {
+      const preference = loadLocationPreference();
+      if (typeof preference === "boolean") {
+        state.extractLocationEnabled = preference;
+        state.locationPreferenceDecided = true;
+      }
+      syncLocationExtractionUI();
     }
   });
 }
@@ -1010,20 +1002,28 @@ function bindEvents() {
 function init() {
   els.year.textContent = new Date().getFullYear();
   const stored = getStoredPostcard();
-  let postcardPreference = { decided: false, enabled: null };
-  if (stored) {
-    state.media = normalizeMediaItems(stored.media);
-    state.title = stored.title ?? "";
-    state.location = stored.location ?? "";
-    state.authLevel = stored.authLevel ?? "none";
-    state.password = stored.password ?? "";
-    state.hint = stored.hint ?? "";
-    state.createdAt = stored.createdAt ?? "";
-    postcardPreference = {
+  const postcardPreference = stored
+    ? {
       decided: Boolean(stored.locationPreferenceDecided),
       enabled: typeof stored.extractLocationEnabled === "boolean" ? stored.extractLocationEnabled : null,
-    };
+    }
+    : { decided: false, enabled: null };
+
+  clearStoredPostcard();
+
+  state.media = [];
+  state.title = "";
+  state.location = "";
+  state.authLevel = "none";
+  state.password = "";
+  state.hint = "";
+  state.createdAt = "";
+  state.currentSlide = 0;
+
+  if (els.senderForm) {
+    els.senderForm.reset();
   }
+
   const storedPreference = loadLocationPreference();
   if (typeof storedPreference === "boolean") {
     state.extractLocationEnabled = storedPreference;
@@ -1036,16 +1036,16 @@ function init() {
     state.locationPreferenceDecided = false;
   }
   if (els.senderTitle) {
-    els.senderTitle.value = state.title;
+    els.senderTitle.value = "";
   }
   if (els.senderLocation) {
-    els.senderLocation.value = state.location;
+    els.senderLocation.value = "";
   }
   if (els.senderPassword) {
-    els.senderPassword.value = state.password;
+    els.senderPassword.value = "";
   }
   if (els.senderHint) {
-    els.senderHint.value = state.hint;
+    els.senderHint.value = "";
   }
   els.authRadios.forEach((radio) => {
     radio.checked = radio.value === state.authLevel;
@@ -1055,9 +1055,6 @@ function init() {
   renderSenderMediaList();
   renderReceiverExperience();
   bindEvents();
-  requestAnimationFrame(() => {
-    animateDigitalPostcard();
-  });
 }
 
 document.addEventListener("DOMContentLoaded", init);

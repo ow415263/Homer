@@ -141,7 +141,16 @@ function getStoredPostcard() {
   }
 }
 
+function clearStoredPostcard() {
+  try {
+    localStorage.removeItem(storageKey);
+  } catch (error) {
+    console.error("Failed to clear stored postcard", error);
+  }
+}
+
 export {
+  clearStoredPostcard,
   MAX_FILE_BYTES,
   getStoredPostcard,
   normalizeMediaItems,
